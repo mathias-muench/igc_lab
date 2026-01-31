@@ -57,6 +57,17 @@ def flight_to_dataframe(flight):
     bool_cols = ["flying", "circling", "task"]
     df[bool_cols] = df[bool_cols].ffill()
 
+    # Add flight metadata to the index
+    df.index = pd.MultiIndex.from_arrays(
+        [
+            df.index,
+            [flight.recorder_manufacturer] * len(df.index),
+            [flight.recorder_id] * len(df.index),
+            [flight.date] * len(df.index)
+        ],
+        names=["datetime", "manufacturer", "recorder_id", "date"]
+    )
+
     return df
 
 def thermals_to_dataframe(flight):
@@ -76,7 +87,7 @@ def thermals_to_dataframe(flight):
     if not flight.valid:
         raise ValueError("Flight is invalid. Check flight.notes for details.")
 
-    return pd.Series(
+    series = pd.Series(
         (pd.to_timedelta(thermal.time_change(), unit="s") for thermal in flight.thermals),
         index=pd.to_datetime(
             [thermal.enter_fix.timestamp for thermal in flight.thermals],
@@ -85,3 +96,16 @@ def thermals_to_dataframe(flight):
         ),
         name="duration"
     )
+
+    # Add flight metadata to the index
+    series.index = pd.MultiIndex.from_arrays(
+        [
+            series.index,
+            [flight.recorder_manufacturer] * len(series.index),
+            [flight.recorder_id] * len(series.index),
+            [flight.date] * len(series.index)
+        ],
+        names=["datetime", "manufacturer", "recorder_id", "date"]
+    )
+
+    return series
