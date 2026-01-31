@@ -61,11 +61,11 @@ def flight_to_dataframe(flight):
     df.index = pd.MultiIndex.from_arrays(
         [
             df.index,
-            [flight.recorder_manufacturer] * len(df.index),
-            [flight.recorder_id] * len(df.index),
+            [flight.fr_manuf_code] * len(df.index),
+            [flight.fr_uniq_id] * len(df.index),
             [flight.date] * len(df.index)
         ],
-        names=["datetime", "manufacturer", "recorder_id", "date"]
+        names=["datetime", "code", "id", "date"]
     )
 
     return df
@@ -101,11 +101,11 @@ def thermals_to_dataframe(flight):
     series.index = pd.MultiIndex.from_arrays(
         [
             series.index,
-            [flight.recorder_manufacturer] * len(series.index),
-            [flight.recorder_id] * len(series.index),
+            [flight.fr_manuf_code] * len(series.index),
+            [flight.fr_uniq_id] * len(series.index),
             [flight.date] * len(series.index)
         ],
-        names=["datetime", "manufacturer", "recorder_id", "date"]
+        names=["datetime", "code", "id", "date"]
     )
 
     return series
