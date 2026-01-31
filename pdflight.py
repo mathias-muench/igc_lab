@@ -46,6 +46,9 @@ def flight_to_dataframe(flight):
         .rename_axis("datetime")
     )
 
+    if df.index.has_duplicates:
+        raise ValueError(f"Duplicate indices found in the DataFrame: {flight.fr_manuf_code}{flight.fr_uniq_id} {flight.date}")
+
     # Resample to 1-second intervals
     df = df.resample('s').asfreq()
 
