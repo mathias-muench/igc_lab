@@ -3,3 +3,4 @@ requests-cache
 jupyterlab
 pandas
 -e /home/muenchm/igc_lib
+unidecode
