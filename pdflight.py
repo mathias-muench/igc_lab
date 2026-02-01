@@ -2,6 +2,8 @@
 
 import pandas as pd
 
+# AI! Add a flight_to_metadata, that takes Flight.pilot and Flight.points as columns and uses the same index as the others (without timestamp of course)
+
 def flight_to_dataframe(flight):
     """Converts a Flight object to a pandas DataFrame.
 
