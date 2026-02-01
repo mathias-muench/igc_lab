@@ -2,7 +2,23 @@
 
 import pandas as pd
 
-# AI! Add a flight_to_metadata, that takes Flight.pilot and Flight.points as columns and uses the same index as the others (without timestamp of course)
+def flight_to_metadata(flight):
+    """Converts Flight metadata to a pandas DataFrame.
+
+    Args:
+        flight: A Flight object (from igc_lib.py).
+
+    Returns:
+        A DataFrame with columns for pilot and points, using the same
+        metadata index (code, id, date) as other functions.
+    """
+    return pd.DataFrame({
+        "pilot": [flight.pilot],
+        "points": [flight.points]
+    }, index=pd.MultiIndex.from_tuples(
+        [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
+        names=["code", "id", "date"]
+    ))
 
 def flight_to_dataframe(flight):
     """Converts a Flight object to a pandas DataFrame.
