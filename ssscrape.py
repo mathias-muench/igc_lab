@@ -8,6 +8,7 @@ from typing import Iterator, Tuple
 import requests_cache
 import locale
 from unidecode import unidecode
+import time
 
 BASE_URL = "https://www.soaringspot.com"
 
@@ -79,6 +80,8 @@ class SoaringSpotScraper(requests_cache.CachedSession):
     def download_igc_data(self, url: str) -> Tuple[str, bytes]:
         response = self.get(url)
         response.raise_for_status()
+        if not response.from_cache:
+            time.sleep(1)
 
         content_disposition = response.headers["content-disposition"]
         filename = content_disposition.split("filename=")[1].strip('"')
