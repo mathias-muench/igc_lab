@@ -50,11 +50,14 @@ class SoaringSpotScraper(requests_cache.CachedSession):
             iso_start = f"{date_str}T{start_time}" if start_time else ""
             iso_finish = f"{date_str}T{finish_time}" if finish_time else ""
 
-            download_link = row.find("a")
-            data_content = download_link["data-content"]
-            soup = BeautifulSoup(data_content, "html.parser")
-            a_tags = soup.find_all("a")
-            igc_url = urljoin(BASE_URL, a_tags[1]["href"])
+            if start_time:
+                download_link = row.find("a")
+                data_content = download_link["data-content"]
+                soup = BeautifulSoup(data_content, "html.parser")
+                a_tags = soup.find_all("a")
+                igc_url = urljoin(BASE_URL, a_tags[1]["href"])
+            else:
+                igc_url = ""
 
             contestant = cols[3].get_text(strip=True)
             points = locale.atoi(cols[-1].get_text(strip=True))
@@ -68,13 +71,10 @@ class SoaringSpotScraper(requests_cache.CachedSession):
         contestant: str,
         points: str,
     ) -> bytes:
-        # Convert non-ASCII characters in contestant name to ASCII representation
-        ascii_contestant = unidecode(contestant)
-
         new_content = f"LSCR::START:{start_time}\r\nLSCR::FINISH:{finish_time}\r\n"
-        new_content += f"LSCR::CONTESTANT:{ascii_contestant}\r\n"
+        new_content += f"LSCR::CONTESTANT:{contestant}\r\n"
         new_content += f"LSCR::POINTS:{points}\r\n"
-        return igc_content + new_content.encode("ascii")
+        return igc_content + unidecode(new_content).encode("ascii")
 
     def download_igc_data(self, url: str) -> Tuple[str, bytes]:
         response = self.get(url)
@@ -98,13 +98,14 @@ class SoaringSpotScraper(requests_cache.CachedSession):
             print(f"\nProcessing task day: {day_url}")
             igc_data = self.get_pilot_igc_links(day_url)
             for igc_url, start_time, finish_time, contestant, points in igc_data:
-                print(f"Downloading: {igc_url}")
-                filename, content = self.download_igc_data(igc_url)
-                content = self.append_times_to_igc(
-                    content, start_time, finish_time, contestant, points
-                )
-                self.save_igc_file(filename, content)
-                print(f"Appended times: {start_time} -> {finish_time}")
+                if igc_url:
+                    print(f"Downloading: {igc_url}")
+                    filename, content = self.download_igc_data(igc_url)
+                    content = self.append_times_to_igc(
+                        content, start_time, finish_time, contestant, points
+                    )
+                    self.save_igc_file(filename, content)
+                    print(f"Appended times: {start_time} -> {finish_time}")
         print("\nScraping complete.")
 
 

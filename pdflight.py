@@ -12,6 +12,9 @@ def flight_to_metadata(flight):
         A DataFrame with columns for pilot and points, using the same
         metadata index (code, id, date) as other functions.
     """
+    if not flight.valid:
+        raise ValueError("Flight is invalid. Check flight.notes for details.")
+
     return pd.DataFrame({
         "pilot": [flight.pilot],
         "points": [flight.points]
