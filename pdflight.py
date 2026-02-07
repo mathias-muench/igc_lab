@@ -2,42 +2,19 @@
 
 import pandas as pd
 
-def flight_to_metadata(flight):
-    """Converts Flight metadata to a pandas DataFrame.
+def flight_to_dataframes(flight):
+    """Converts a Flight object to pandas DataFrames for metadata, fixes, and thermals.
 
     Args:
         flight: A Flight object (from igc_lib.py).
 
     Returns:
-        A DataFrame with columns for pilot and points, using the same
-        metadata index (code, id, date) as other functions.
-    """
-    if not flight.valid:
-        raise ValueError("Flight is invalid. Check flight.notes for details.")
+        A tuple of three pandas objects:
+        - A DataFrame with flight metadata (pilot, points)
+        - A DataFrame with flight fixes (1-second resampled)
+        - A Series with thermal durations
 
-    return pd.DataFrame({
-        "pilot": [flight.pilot],
-        "points": [flight.points]
-    }, index=pd.MultiIndex.from_tuples(
-        [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
-        names=["code", "id", "date"]
-    ))
-
-def flight_to_dataframe(flight):
-    """Converts a Flight object to a pandas DataFrame.
-
-    Args:
-        flight: A Flight object (from igc_lib.py).
-
-    Returns:
-        A DataFrame where each row is a GNSSFix, resampled to 1-second intervals,
-        with columns for:
-        - lat, lon (interpolated)
-        - derived attributes: gsp, bearing, bearing_change_rate (interpolated)
-        - flying, circling, task (forward-filled)
-        - alt (chosen altitude, PRESS or GNSS, interpolated)
-
-        The index is set to the UTC datetime of the fix.
+        All objects share the same metadata index (code, id, date) in their indices.
 
     Raises:
         ValueError: If the flight is invalid.
@@ -45,7 +22,17 @@ def flight_to_dataframe(flight):
     if not flight.valid:
         raise ValueError("Flight is invalid. Check flight.notes for details.")
 
-    df = (
+    # Create metadata DataFrame
+    metadata_df = pd.DataFrame({
+        "pilot": [flight.pilot],
+        "points": [flight.points]
+    }, index=pd.MultiIndex.from_tuples(
+        [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
+        names=["code", "id", "date"]
+    ))
+
+    # Create fixes DataFrame
+    fixes_df = (
         pd.DataFrame({
             "lat": fix.lat,
             "lon": fix.lon,
@@ -67,51 +54,33 @@ def flight_to_dataframe(flight):
         .rename_axis("datetime")
     )
 
-    if df.index.has_duplicates:
+    if fixes_df.index.has_duplicates:
         raise ValueError(f"Duplicate indices found in the DataFrame: {flight.fr_manuf_code}{flight.fr_uniq_id} {flight.date}")
 
     # Resample to 1-second intervals
-    df = df.resample('s').asfreq()
+    fixes_df = fixes_df.resample('s').asfreq()
 
     # Interpolate numerical columns
     num_cols = ["lat", "lon", "alt", "gsp", "bearing", "bearing_change_rate"]
-    df[num_cols] = df[num_cols].interpolate(method='time')
+    fixes_df[num_cols] = fixes_df[num_cols].interpolate(method='time')
 
     # Forward-fill boolean columns
     bool_cols = ["flying", "circling", "task"]
-    df[bool_cols] = df[bool_cols].ffill()
+    fixes_df[bool_cols] = fixes_df[bool_cols].ffill()
 
     # Add flight metadata to the index
-    df.index = pd.MultiIndex.from_arrays(
+    fixes_df.index = pd.MultiIndex.from_arrays(
         [
-            df.index,
-            [flight.fr_manuf_code] * len(df.index),
-            [flight.fr_uniq_id] * len(df.index),
-            [flight.date] * len(df.index)
+            fixes_df.index,
+            [flight.fr_manuf_code] * len(fixes_df.index),
+            [flight.fr_uniq_id] * len(fixes_df.index),
+            [flight.date] * len(fixes_df.index)
         ],
         names=["datetime", "code", "id", "date"]
     )
 
-    return df
-
-def thermals_to_dataframe(flight):
-    """Converts a Flight's thermals to a pandas Series of durations.
-
-    Args:
-        flight: A Flight object (from igc_lib.py).
-
-    Returns:
-        A Series where:
-        - index is the UTC datetime of the thermal entry
-        - values are the duration of each thermal (as timedelta)
-
-    Raises:
-        ValueError: If the flight is invalid.
-    """
-    if not flight.valid:
-        raise ValueError("Flight is invalid. Check flight.notes for details.")
-
-    series = pd.Series(
+    # Create thermals Series
+    thermals_series = pd.Series(
         (pd.to_timedelta(thermal.time_change(), unit="s") for thermal in flight.thermals),
         index=pd.to_datetime(
             [thermal.enter_fix.timestamp for thermal in flight.thermals],
@@ -122,14 +91,14 @@ def thermals_to_dataframe(flight):
     )
 
     # Add flight metadata to the index
-    series.index = pd.MultiIndex.from_arrays(
+    thermals_series.index = pd.MultiIndex.from_arrays(
         [
-            series.index,
-            [flight.fr_manuf_code] * len(series.index),
-            [flight.fr_uniq_id] * len(series.index),
-            [flight.date] * len(series.index)
+            thermals_series.index,
+            [flight.fr_manuf_code] * len(thermals_series.index),
+            [flight.fr_uniq_id] * len(thermals_series.index),
+            [flight.date] * len(thermals_series.index)
         ],
         names=["datetime", "code", "id", "date"]
     )
 
-    return series
+    return metadata_df, fixes_df, thermals_series
