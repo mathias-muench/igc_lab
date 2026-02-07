@@ -1,7 +1,10 @@
+-e /home/muenchm/igc_lib
 bs4
 requests-cache
 jupyterlab
 pandas
--e /home/muenchm/igc_lib
 unidecode
 matplotlib
+nbqa
+nbqa[toolchain]
+pandas-stubs

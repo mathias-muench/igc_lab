@@ -1,0 +1,4 @@
+- Use type hints where possible.
+- Take care of stub libraries.
+- Do not use comments. The code is obvious.
+- Do not use docstrings. Function name and type hints should serve as explanation.
