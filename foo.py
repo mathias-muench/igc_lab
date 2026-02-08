@@ -9,9 +9,9 @@ from joblib import Parallel, delayed
 
 
 flights = Parallel(n_jobs=-1)(
-    delayed(Flight.create_from_file)(i) for i in glob.glob("SSM2023/*.igc")
+    delayed(Flight.create_from_file)(i) for i in glob.glob("./*.igc")
 )
 
 
-(md, fl, th) = pdflight.flights_to_dataframes(flights)
+(md, fl, th) = pdflight.flights_to_dataframes(flight for flight in flights if flight.valid)
 md.to_csv("md.tsv", sep="\t")

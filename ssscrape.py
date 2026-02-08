@@ -37,10 +37,13 @@ class SoaringSpotScraper(requests_cache.CachedSession):
 
     def get_pilot_igc_links(
         self, task_day_url: str
-    ) -> Iterator[Tuple[str, str, str, str, str]]:
+    ) -> Iterator[Tuple[str, str, str, str, int, str, str]]:
         soup = self.get_soup(task_day_url)
 
-        date_match = re.search(r"-\d+-on-(\d{4}-\d{2}-\d{2})/daily", task_day_url)
+        url_info = task_day_url.split("/")
+        competition = url_info[4]
+        competition_class = url_info[6]
+        date_match = re.search(r"-\d+-on-(\d{4}-\d{2}-\d{2})$", url_info[7])
         date_str = date_match.group(1)
 
         headers = {header.get_text(strip=True): i for i, header in enumerate(soup.select("table thead tr")[0].find_all("th"))}
@@ -62,7 +65,7 @@ class SoaringSpotScraper(requests_cache.CachedSession):
             else:
                 igc_url = ""
 
-            yield igc_url, iso_start, iso_finish, contestant, points
+            yield igc_url, iso_start, iso_finish, contestant, points, competition, competition_class
 
     @staticmethod
     def append_times_to_igc(
@@ -70,11 +73,16 @@ class SoaringSpotScraper(requests_cache.CachedSession):
         start_time: str,
         finish_time: str,
         contestant: str,
-        points: str,
+        points: int,
+        competition: str,
+        competition_class: str,
     ) -> bytes:
-        new_content = f"LSCR::START:{start_time}\r\nLSCR::FINISH:{finish_time}\r\n"
+        new_content = f"LSCR::START:{start_time}\r\n"
+        new_content += f"LSCR::FINISH:{finish_time}\r\n"
         new_content += f"LSCR::CONTESTANT:{contestant}\r\n"
         new_content += f"LSCR::POINTS:{points}\r\n"
+        new_content += f"LSCR::COMPETITION:{competition}\r\n"
+        new_content += f"LSCR::CLASS:{competition_class}\r\n"
         return igc_content + unidecode(new_content).encode("ascii")
 
     def download_igc_data(self, url: str) -> Tuple[str, bytes]:
@@ -100,12 +108,12 @@ class SoaringSpotScraper(requests_cache.CachedSession):
         for day_url in task_days:
             print(f"\nProcessing task day: {day_url}")
             igc_data = self.get_pilot_igc_links(day_url)
-            for igc_url, start_time, finish_time, contestant, points in igc_data:
+            for igc_url, start_time, finish_time, contestant, points, competition, competition_class in igc_data:
                 if igc_url:
                     print(f"Downloading: {igc_url}")
                     filename, content = self.download_igc_data(igc_url)
                     content = self.append_times_to_igc(
-                        content, start_time, finish_time, contestant, points
+                        content, start_time, finish_time, contestant, points, competition, competition_class
                     )
                     self.save_igc_file(filename, content)
                     print(f"Appended times: {start_time} -> {finish_time}")

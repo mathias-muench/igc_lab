@@ -16,7 +16,12 @@ def flights_to_dataframes(
             raise ValueError("Flight is invalid. Check flight.notes for details.")
 
         metadata_df = pd.DataFrame(
-            {"pilot": [flight.pilot], "points": [flight.points]},
+            {
+                "competition": [flight.competition],
+                "competition_class": [flight.competition_class],
+                "pilot": [flight.pilot],
+                "points": [flight.points],
+            },
             index=pd.MultiIndex.from_tuples(
                 [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
                 names=["code", "id", "date"],
