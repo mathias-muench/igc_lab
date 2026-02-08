@@ -43,16 +43,18 @@ class SoaringSpotScraper(requests_cache.CachedSession):
         date_match = re.search(r"-\d+-on-(\d{4}-\d{2}-\d{2})/daily", task_day_url)
         date_str = date_match.group(1)
 
+        headers = {header.get_text(strip=True): i for i, header in enumerate(soup.select("table thead tr")[0].find_all("th"))}
         for row in soup.select("table tbody tr"):
             cols = row.find_all("td")
-            start_time = cols[5].get_text(strip=True)
-            finish_time = cols[6].get_text(strip=True)
-
+            start_time = cols[headers["Start"]].get_text(strip=True)
+            finish_time = cols[headers["Finish"]].get_text(strip=True)
             iso_start = f"{date_str}T{start_time}" if start_time else ""
             iso_finish = f"{date_str}T{finish_time}" if finish_time else ""
+            contestant = cols[headers["Contestant"]].get_text(strip=True)
+            points = locale.atoi(cols[headers["Points"]].get_text(strip=True))
 
-            if start_time:
-                download_link = row.find("a")
+            download_link = row.find("a")
+            if download_link:
                 data_content = download_link["data-content"]
                 soup = BeautifulSoup(data_content, "html.parser")
                 a_tags = soup.find_all("a")
@@ -60,8 +62,6 @@ class SoaringSpotScraper(requests_cache.CachedSession):
             else:
                 igc_url = ""
 
-            contestant = cols[3].get_text(strip=True)
-            points = locale.atoi(cols[-1].get_text(strip=True))
             yield igc_url, iso_start, iso_finish, contestant, points
 
     @staticmethod
