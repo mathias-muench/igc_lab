@@ -45,8 +45,8 @@ class SoaringSpotScraper(requests_cache.CachedSession):
 
         for row in soup.select("table tbody tr"):
             cols = row.find_all("td")
-            start_time = cols[7].get_text(strip=True)
-            finish_time = cols[8].get_text(strip=True)
+            start_time = cols[5].get_text(strip=True)
+            finish_time = cols[6].get_text(strip=True)
 
             iso_start = f"{date_str}T{start_time}" if start_time else ""
             iso_finish = f"{date_str}T{finish_time}" if finish_time else ""
