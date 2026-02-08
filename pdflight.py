@@ -93,7 +93,11 @@ def flights_to_dataframes(
         thermals_series_list.append(thermals_series)
 
     return (
-        pd.concat(metadata_dfs),
-        pd.concat(fixes_dfs),
-        pd.concat(thermals_series_list),
+        pd.concat(metadata_dfs).sort_index(),
+        pd.concat(fixes_dfs).sort_index(),
+        pd.concat(thermals_series_list).sort_index(),
     )
+
+
+def shift_datetime(i, dt):
+    return ((i[0] + dt),) + i[1:]

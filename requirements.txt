@@ -8,3 +8,5 @@ matplotlib
 nbqa
 nbqa[toolchain]
 pandas-stubs
+seaborn
+statsmodels
