@@ -2,14 +2,14 @@
 # coding: utf-8
 
 
-import glob
+import sys
 from igc_lib.igc_lib import Flight
 import pdflight
 from joblib import Parallel, delayed
 
 
 flights = Parallel(n_jobs=-1)(
-    delayed(Flight.create_from_file)(i) for i in glob.glob("./*.igc")
+    delayed(Flight.create_from_file)(i) for i in sys.argv
 )
 
 

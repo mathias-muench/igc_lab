@@ -21,8 +21,8 @@ def flights_to_dataframes(
                 "competition_class": [flight.competition_class],
                 "pilot": [flight.pilot],
                 "points": [flight.points],
-                "start": [flight.start],
-                "finish": [flight.finish],
+                "start": [pd.to_datetime(flight.start).tz_localize("Europe/Vienna").tz_convert("UTC")],
+                "finish": [pd.to_datetime(flight.finish).tz_localize("Europe/Vienna").tz_convert("UTC")],
             },
             index=pd.MultiIndex.from_tuples(
                 [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
@@ -42,7 +42,6 @@ def flights_to_dataframes(
                     "bearing_change_rate": fix.bearing_change_rate,
                     "flying": fix.flying,
                     "circling": fix.circling,
-                    "task": fix.task,
                 }
                 for fix in flight.fixes
             )
@@ -62,7 +61,7 @@ def flights_to_dataframes(
         fixes_df = fixes_df.resample("1s").asfreq()
         num_cols = ["lat", "lon", "alt", "gsp", "bearing", "bearing_change_rate"]
         fixes_df[num_cols] = fixes_df[num_cols].interpolate(method="time")
-        bool_cols = ["flying", "circling", "task"]
+        bool_cols = ["flying", "circling"]
         fixes_df[bool_cols] = fixes_df[bool_cols].ffill()
 
         fixes_df.index = pd.MultiIndex.from_arrays(
@@ -109,7 +108,5 @@ def flights_to_dataframes(
 def shift_datetime(i, dt):
     return ((i[0] + dt),) + i[1:]
 
-
-def compute_task(md: pd.DataFrame, fl: pd.DataFrame):
-    # AI! Return a pd.Series that contains the same values as the "task" column in _compute_task() in ../igc_lib/src/igc_lib/igc_lib.py
-    return pd.Series
+def in_task(df: pd.DataFrame, md: pd.DataFrame) -> pd.DataFrame:
+    return (df.index.droplevel("datetime").map(md["start"]) <= df.index.get_level_values("datetime")) & (df.index.get_level_values("datetime") < df.index.droplevel("datetime").map(md["finish"]))
