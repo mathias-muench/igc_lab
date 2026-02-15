@@ -3,13 +3,13 @@
 
 
 import sys
-from igc_lib.igc_lib import Flight
+from scraped import ScrapedFlight
 import pdflight
 from joblib import Parallel, delayed
 
 
 flights = Parallel(n_jobs=-1)(
-    delayed(Flight.create_from_file)(i) for i in sys.argv
+    delayed(ScrapedFlight.create_from_file)(i) for i in sys.argv
 )
 
 
