@@ -1,11 +1,12 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
 import pandas as pd
-from igc_lib.igc_lib import Flight
+
+from scraped import ScrapedFlight
 
 
 def flights_to_dataframes(
-    flights: List[Flight],
+    flights: List[ScrapedFlight],
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     metadata_dfs = []
     fixes_dfs = []
@@ -21,18 +22,26 @@ def flights_to_dataframes(
                 "competition_class": [flight.competition_class],
                 "pilot": [flight.pilot],
                 "points": [flight.points],
-                "start": [pd.to_datetime(flight.start).tz_localize("Europe/Vienna").tz_convert("UTC")],
-                "finish": [pd.to_datetime(flight.finish).tz_localize("Europe/Vienna").tz_convert("UTC")],
+                "start": [
+                    pd.to_datetime(flight.start)
+                    .tz_localize("Europe/Vienna")
+                    .tz_convert("UTC")
+                ],
+                "finish": [
+                    pd.to_datetime(flight.finish)
+                    .tz_localize("Europe/Vienna")
+                    .tz_convert("UTC")
+                ],
             },
-            index=pd.MultiIndex.from_tuples(
-                [(flight.fr_manuf_code, flight.fr_uniq_id, flight.date)],
-                names=["code", "id", "date"],
+            index=pd.Index(
+                [flight.fr_manuf_code + flight.fr_uniq_id + flight.date],
+                name="flight",
             ),
         )
         metadata_dfs.append(metadata_df)
 
-        fixes_df = (
-            pd.DataFrame(
+        fixes_df = pd.DataFrame(
+            (
                 {
                     "lat": fix.lat,
                     "lon": fix.lon,
@@ -44,19 +53,11 @@ def flights_to_dataframes(
                     "circling": fix.circling,
                 }
                 for fix in flight.fixes
-            )
-            .set_index(
-                pd.to_datetime(
-                    [fix.timestamp for fix in flight.fixes], unit="s", utc=True
-                )
-            )
-            .rename_axis("datetime")
+            ),
+            index=pd.to_datetime(
+                [fix.timestamp for fix in flight.fixes], unit="s", utc=True
+            ),
         )
-
-        if fixes_df.index.has_duplicates:
-            raise ValueError(
-                f"Duplicate indices found in the DataFrame: {flight.fr_manuf_code}{flight.fr_uniq_id} {flight.date}"
-            )
 
         fixes_df = fixes_df.resample("1s").asfreq()
         num_cols = ["lat", "lon", "alt", "gsp", "bearing", "bearing_change_rate"]
@@ -66,12 +67,11 @@ def flights_to_dataframes(
 
         fixes_df.index = pd.MultiIndex.from_arrays(
             [
+                [flight.fr_manuf_code + flight.fr_uniq_id + flight.date]
+                * len(fixes_df.index),
                 fixes_df.index,
-                [flight.fr_manuf_code] * len(fixes_df.index),
-                [flight.fr_uniq_id] * len(fixes_df.index),
-                [flight.date] * len(fixes_df.index),
             ],
-            names=["datetime", "code", "id", "date"],
+            names=["flight", "datetime"],
         )
         fixes_dfs.append(fixes_df)
 
@@ -80,21 +80,19 @@ def flights_to_dataframes(
                 pd.to_timedelta(thermal.time_change(), unit="s")
                 for thermal in flight.thermals
             ],
-            index=pd.to_datetime(
-                [thermal.enter_fix.timestamp for thermal in flight.thermals],
-                unit="s",
-                utc=True,
+            index=pd.MultiIndex.from_arrays(
+                [
+                    [flight.fr_manuf_code + flight.fr_uniq_id + flight.date]
+                    * len(flight.thermals),
+                    pd.to_datetime(
+                        [thermal.enter_fix.timestamp for thermal in flight.thermals],
+                        unit="s",
+                        utc=True,
+                    ),
+                ],
+                names=["flight", "datetime"],
             ),
             name="duration",
-        )
-        thermals_series.index = pd.MultiIndex.from_arrays(
-            [
-                thermals_series.index,
-                [flight.fr_manuf_code] * len(thermals_series.index),
-                [flight.fr_uniq_id] * len(thermals_series.index),
-                [flight.date] * len(thermals_series.index),
-            ],
-            names=["datetime", "code", "id", "date"],
         )
         thermals_series_list.append(thermals_series)
 
@@ -106,7 +104,14 @@ def flights_to_dataframes(
 
 
 def shift_datetime(i, dt):
-    return ((i[0] + dt),) + i[1:]
+    return (i[0], (i[1] + dt))
+
 
 def in_task(df: pd.DataFrame, md: pd.DataFrame) -> pd.DataFrame:
-    return (df.index.droplevel("datetime").map(md["start"]) <= df.index.get_level_values("datetime")) & (df.index.get_level_values("datetime") < df.index.droplevel("datetime").map(md["finish"]))
+    return (
+        df.index.droplevel("datetime").map(md["start"])
+        <= df.index.get_level_values("datetime")
+    ) & (
+        df.index.get_level_values("datetime")
+        < df.index.droplevel("datetime").map(md["finish"])
+    )
