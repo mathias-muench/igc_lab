@@ -6,6 +6,7 @@ import sys
 from scraped import ScrapedFlight
 import pdflight
 from joblib import Parallel, delayed
+import pickle
 
 
 flights = Parallel(n_jobs=-1)(
@@ -14,4 +15,5 @@ flights = Parallel(n_jobs=-1)(
 
 
 (md, fl, th) = pdflight.flights_to_dataframes(flight for flight in flights if flight.valid)
-md.to_csv("md.tsv", sep="\t")
+with open('store.pkl', 'wb') as f:
+    pickle.dump({'md': md, 'fl': fl, 'th': th}, f)
