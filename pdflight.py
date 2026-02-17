@@ -59,11 +59,7 @@ def flights_to_dataframes(
             ),
         )
 
-        fixes_df = fixes_df.resample("1s").asfreq()
-        num_cols = ["lat", "lon", "alt", "gsp", "bearing", "bearing_change_rate"]
-        fixes_df[num_cols] = fixes_df[num_cols].interpolate(method="time")
-        bool_cols = ["flying", "circling"]
-        fixes_df[bool_cols] = fixes_df[bool_cols].ffill()
+        fixes_df = fixes_df.resample("1s").nearest()
 
         fixes_df.index = pd.MultiIndex.from_arrays(
             [
